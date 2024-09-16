@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JNTUH Result Portal</title>
+    
     <style>
+        /* Your existing styles */
         body {
             font-family: Arial, sans-serif;
             background-color: #f0f8ff;
@@ -40,9 +42,6 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
-        }
-        input[type="text"][disabled] {
-            background-color: #eee;
         }
         button {
             padding: 10px 20px;
@@ -98,6 +97,22 @@
             margin-top: 20px;
             font-weight: bold;
         }
+
+        /* Updated Captcha refresh style */
+        #refreshCaptcha {
+            background: none;
+            border: none;
+            color: #004080;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        .captcha-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
     </style>
 </head>
 <body>
@@ -117,9 +132,16 @@
                 <label for="dob">Enter Date of Birth:</label>
                 <input type="date" id="dob" required>
             </div>
+            <div class="form-group captcha-wrapper">
+                <div>
+                    <label for="captchaDisplay">Captcha Code:</label>
+                    <input type="text" id="captchaDisplay" disabled>
+                </div>
+                <button type="button" id="refreshCaptcha">Refresh</button>
+            </div>
             <div class="form-group">
-                <label for="captcha">Please enter this Captcha code:</label>
-                <input type="text" id="captcha" value="9LDIIUP1" disabled>
+                <label for="captchaInput">Please enter the Captcha code:</label>
+                <input type="text" id="captchaInput" required>
             </div>
             <button type="submit">Submit</button>
         </form>
@@ -153,7 +175,7 @@
                         <td id="subject3Status"></td>
                     </tr>
                     <tr>
-                        <td id="subject4Name">Database management System</td>
+                        <td id="subject4Name">Database Management System</td>
                         <td id="subject4Result"></td>
                         <td id="subject4Status"></td>
                     </tr>
@@ -204,22 +226,20 @@
                     subject3: "33",
                     subject4: "16",
                     subject5: "30"
-
                 },
                 grade: "FAIL"
             },
             "22631A0503": {
-                dob: "2005-06-20",
+                dob: "2004-10-25",
                 name: "K.GOPI RAJU",
                 subjects: {
                     subject1: "25",
                     subject2: "25",
                     subject3: "33",
-                    subject4: "30",
-                    subject5: "35"
-
+                    subject4: "12",
+                    subject5: "08"
                 },
-                grade: "A+"
+                grade: "FAIL"
             },
             "22631A0562": {
                 dob: "2004-10-25",
@@ -229,8 +249,7 @@
                     subject2: "25",
                     subject3: "33",
                     subject4: "30",
-                    subject5: "12"
-
+                    subject5: "33"
                 },
                 grade: "B+"
             },
@@ -243,53 +262,76 @@
                     subject3: "52",
                     subject4: "50",
                     subject5: "51"
-
                 },
-                grade: "Oustanding"
+                grade: "Outstanding"
             }
         };
 
+        // Generate random captcha
+        function generateCaptcha() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            let captcha = "";
+            for (let i = 0; i < 8; i++) {
+                captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('captchaDisplay').value = captcha;
+            return captcha;
+        }
+
+        let captchaCode = generateCaptcha(); // Initialize captcha when page loads
+
+        // Function to generate a new captcha code and display it
+        function refreshCaptcha() {
+            captchaCode = generateCaptcha(); // Generate a new captcha
+        }
+
+        document.getElementById('refreshCaptcha').addEventListener('click', refreshCaptcha);
+
         document.getElementById('resultForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            var rollNumber = document.getElementById('rollNumber').value;
-            var dob = document.getElementById('dob').value;
 
-            // Check if the roll number exists and if the DOB matches
-            if (results[rollNumber] && results[rollNumber].dob === dob) {
-                // Display the result
-                var result = results[rollNumber];
-                document.getElementById('resultDisplay').style.display = 'block';
+            const rollNumber = document.getElementById('rollNumber').value;
+            const dob = document.getElementById('dob').value;
+            const enteredCaptcha = document.getElementById('captchaInput').value;
+
+            if (enteredCaptcha !== captchaCode) {
+                alert("Incorrect captcha code. Please try again.");
+                refreshCaptcha(); // Refresh captcha on error
+                return;
+            }
+
+            const result = results[rollNumber];
+            if (result && result.dob === dob) {
                 document.getElementById('rollResult').textContent = rollNumber;
                 document.getElementById('nameResult').textContent = result.name;
-                
-                // Update subjects and pass/fail status
-                updateSubject('subject1', result.subjects.subject1);
-                updateSubject('subject2', result.subjects.subject2);
-                updateSubject('subject3', result.subjects.subject3);
-                updateSubject('subject4', result.subjects.subject4);
-                updateSubject('subject5', result.subjects.subject5);
 
+                // Update subject marks and status
+                function setStatusAndClass(subjectId, marks) {
+                    const statusElement = document.getElementById(subjectId);
+                    const marksValue = parseInt(marks);
+                    if (marksValue >= 25) {
+                        statusElement.textContent = "Pass";
+                        statusElement.className = "pass";
+                    } else {
+                        statusElement.textContent = "Fail";
+                        statusElement.className = "fail";
+                    }
+                    return marksValue;
+                }
+
+                document.getElementById('subject1Result').textContent = setStatusAndClass('subject1Status', result.subjects.subject1);
+                document.getElementById('subject2Result').textContent = setStatusAndClass('subject2Status', result.subjects.subject2);
+                document.getElementById('subject3Result').textContent = setStatusAndClass('subject3Status', result.subjects.subject3);
+                document.getElementById('subject4Result').textContent = setStatusAndClass('subject4Status', result.subjects.subject4);
+                document.getElementById('subject5Result').textContent = setStatusAndClass('subject5Status', result.subjects.subject5);
                 document.getElementById('gradeResult').textContent = result.grade;
+
+                document.getElementById('resultDisplay').style.display = 'block';
             } else {
-                alert('Invalid Roll Number or Date of Birth!');
+                alert("No results found for the provided details.");
+                refreshCaptcha(); // Refresh captcha on error
             }
         });
-
-        function updateSubject(subjectId, marks) {
-            const passMark = 25;
-            const resultElement = document.getElementById(`${subjectId}Result`);
-            const statusElement = document.getElementById(`${subjectId}Status`);
-
-            resultElement.textContent = marks;
-
-            if (parseInt(marks) >= passMark) {
-                statusElement.textContent = 'Pass';
-                statusElement.className = 'pass';
-            } else {
-                statusElement.textContent = 'Fail';
-                statusElement.className = 'fail';
-            }
-        }
     </script>
 </body>
 </html>
